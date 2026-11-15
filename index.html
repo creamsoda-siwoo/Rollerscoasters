@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#10151d" />
+    <title>코스터 스튜디오</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="viewport"></div>
+
+      <!-- ───────────── 설계 모드 ───────────── -->
+      <div id="design-ui">
+        <header id="topbar" class="panel">
+          <div class="brand" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M2 19c3 0 3-11 7-11s3 7 6 7 3-10 7-10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+          </div>
+          <input id="course-name" type="text" maxlength="60" spellcheck="false" aria-label="코스 이름" />
+          <div class="spacer"></div>
+          <button id="btn-new" class="btn" title="새 코스">새 코스</button>
+          <button id="btn-save" class="btn" title="저장 (Ctrl+S)">저장</button>
+          <button id="btn-load" class="btn" title="불러오기">불러오기</button>
+          <button id="btn-json" class="btn" title="JSON 내보내기/가져오기">JSON</button>
+          <button id="btn-ride" class="btn primary" title="탑승 (Enter)">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 4l14 8-14 8z" fill="currentColor"/></svg>
+            탑승
+          </button>
+        </header>
+
+        <aside id="toolbar" class="panel" aria-label="도구">
+          <div class="group">
+            <button id="tool-select" class="tool" title="선택·이동 (V)">
+              <svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 2-2 6z" fill="currentColor"/></svg>
+              <span>선택</span>
+            </button>
+            <button id="tool-add" class="tool" title="제어점 추가 (A)">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+              <span>점 추가</span>
+            </button>
+          </div>
+          <div class="group">
+            <button id="btn-undo" class="tool" title="실행취소 (Ctrl+Z)">
+              <svg viewBox="0 0 24 24"><path d="M8 5L3 10l5 5M3 10h11a6 6 0 010 12h-3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>취소</span>
+            </button>
+            <button id="btn-redo" class="tool" title="다시실행 (Ctrl+Shift+Z)">
+              <svg viewBox="0 0 24 24"><path d="M16 5l5 5-5 5M21 10H10a6 6 0 000 12h3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>다시</span>
+            </button>
+          </div>
+          <div class="group">
+            <div class="group-label">부품</div>
+            <button id="preset-loop" class="tool" title="선택한 점 뒤에 루프 삽입">
+              <svg viewBox="0 0 24 24"><path d="M2 20h5c6 0 9-3 9-8a4.5 4.5 0 10-9 0c0 5 3 8 9 8h6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <span>루프</span>
+            </button>
+            <button id="preset-corkscrew" class="tool" title="선택한 점 뒤에 코르크스크류 삽입">
+              <svg viewBox="0 0 24 24"><path d="M2 16c3 0 4-9 8-9s2 10 6 10 3-9 6-9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M7 12l10 0" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 2"/></svg>
+              <span>코르크</span>
+            </button>
+            <button id="preset-drop" class="tool" title="선택한 점 뒤에 급하강 삽입">
+              <svg viewBox="0 0 24 24"><path d="M2 5h6c3 0 3 2 4 7s2 7 5 7h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <span>급하강</span>
+            </button>
+          </div>
+          <div class="group">
+            <button id="btn-autobank" class="tool" title="예상 속도에 맞춰 뱅킹 자동 계산">
+              <svg viewBox="0 0 24 24"><path d="M4 18L20 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M4 20h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></svg>
+              <span>자동뱅킹</span>
+            </button>
+            <button id="btn-frame" class="tool" title="코스 전체 보기 (F)">
+              <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>전체보기</span>
+            </button>
+          </div>
+        </aside>
+
+        <aside id="inspector" class="panel" aria-label="속성">
+          <section id="point-panel">
+            <div class="section-head">
+              <h2 id="point-title">제어점</h2>
+              <div class="stepper">
+                <button id="btn-prev" class="icon-btn" title="이전 점 ([)">‹</button>
+                <button id="btn-next" class="icon-btn" title="다음 점 (])">›</button>
+              </div>
+            </div>
+            <div id="point-empty" class="muted">제어점을 선택하면 높이·뱅킹·체인 리프트를 조절할 수 있습니다.</div>
+            <div id="point-fields" hidden>
+              <label class="field">
+                <span class="field-name">높이</span>
+                <input id="in-height" type="range" min="0.6" max="110" step="0.1" />
+                <output id="out-height">0 m</output>
+              </label>
+              <label class="field">
+                <span class="field-name">뱅킹</span>
+                <input id="in-bank" type="range" min="-180" max="180" step="1" />
+                <output id="out-bank">0°</output>
+              </label>
+              <label class="check">
+                <input id="in-chain" type="checkbox" />
+                <span>체인 리프트 <small>이 점 → 다음 점</small></span>
+              </label>
+              <div class="row">
+                <button id="btn-bank-zero" class="btn small">뱅킹 0°</button>
+                <button id="btn-delete" class="btn small danger" title="삭제 (Delete)">점 삭제</button>
+              </div>
+            </div>
+          </section>
+          <section id="stats-panel">
+            <h2>코스 정보</h2>
+            <dl class="stats">
+              <div><dt>길이</dt><dd id="stat-length">–</dd></div>
+              <div><dt>최고 높이</dt><dd id="stat-height">–</dd></div>
+              <div><dt>제어점</dt><dd id="stat-points">–</dd></div>
+            </dl>
+            <div id="prediction" class="prediction"></div>
+            <div id="warning" class="warning" hidden></div>
+            <div id="record-line" class="muted small-text"></div>
+          </section>
+        </aside>
+
+        <div id="hint" class="panel"></div>
+      </div>
+
+      <!-- ───────────── 탑승 모드 ───────────── -->
+      <div id="ride-ui" hidden>
+        <div id="vignette"></div>
+        <div id="hud-top" class="hud-chip-row">
+          <div class="hud-chip"><span class="chip-label">시간</span><span id="hud-time">0.0</span><small>초</small></div>
+          <div class="hud-chip"><span class="chip-label">높이</span><span id="hud-height">0</span><small>m</small></div>
+          <div class="hud-chip" id="hud-chain" hidden>체인 리프트</div>
+        </div>
+        <div id="ride-buttons">
+          <button id="btn-camera" class="btn" title="시점 전환 (C)">시점: 1인칭</button>
+          <button id="btn-mute" class="btn" title="소리 (M)">소리 켜짐</button>
+          <button id="btn-exit" class="btn" title="설계로 (Esc)">나가기</button>
+        </div>
+        <div id="hud-speed" class="hud-block">
+          <div class="hud-value"><span id="hud-speed-value">0</span><small>km/h</small></div>
+          <div class="hud-label">속도</div>
+        </div>
+        <div id="hud-g" class="hud-block">
+          <div class="hud-value"><span id="hud-g-value">1.0</span><small>G</small></div>
+          <div class="g-bar"><div class="g-zero"></div><div id="g-fill"></div></div>
+          <div class="hud-label">수직 G · 횡 <span id="hud-glat">0.0</span></div>
+        </div>
+        <div id="progress"><div id="progress-fill"></div></div>
+      </div>
+
+      <div id="modal-root"></div>
+      <div id="toasts" aria-live="polite"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
