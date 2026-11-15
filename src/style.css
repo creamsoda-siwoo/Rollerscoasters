@@ -1365,7 +1365,7 @@ textarea.json:focus {
 }
 
 .form-row > span {
-  width: 52px;
+  width: 60px;
   flex: none;
   color: var(--muted);
   font-size: 13px;

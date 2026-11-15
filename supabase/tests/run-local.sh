@@ -11,7 +11,7 @@ cleanup() { run "'$bin/pg_ctl' -D '$dir/data' stop -m immediate" >/dev/null 2>&1
 trap cleanup EXIT
 run "'$bin/initdb' -D '$dir/data' -U postgres -A trust" >/dev/null
 run "'$bin/pg_ctl' -D '$dir/data' -o '-p $port -c listen_addresses=127.0.0.1 -k $dir' -l '$dir/log' -w start" >/dev/null
-for f in "$here/00_supabase_stub.sql" "$here"/../migrations/*.sql "$here/01_rls_test.sql"; do
+for f in "$here/00_supabase_stub.sql" "$here"/../migrations/*.sql "$here/01_rls_test.sql" "$here/02_claims_test.sql"; do
   psql -h 127.0.0.1 -p "$port" -U postgres -v ON_ERROR_STOP=1 -q -f "$f" 2>&1 | sed -e 's/^psql:[^ ]* //' | { if [ -n "${VERBOSE:-}" ]; then cat; else grep -v '^NOTICE:  PASS' || true; fi; }
   [ "${PIPESTATUS[0]}" = 0 ] || { echo "실패: $f"; exit 1; }
 done

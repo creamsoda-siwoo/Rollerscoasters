@@ -21,7 +21,7 @@ npm test           # 트랙·물리 단위 테스트
 
 ## 온라인 기능 (선택)
 
-Supabase 를 연결하면 익명 로그인으로 바로 시작해 코스를 올리고, 남의 코스를 타 보고 평점을 남길 수 있습니다.
+Supabase 를 연결하면 로그인 화면 없이 바로 시작해 코스를 올리고, 남의 코스를 타 보고 평점을 남길 수 있습니다.
 `.env.example` 을 `.env.local` 로 복사해 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 를 채우면 켜집니다.
 값이 없으면 온라인 버튼만 비활성 안내를 띄우고 나머지는 그대로 동작합니다.
 
@@ -80,7 +80,7 @@ src/
     train.ts            열차 모델
   online/               ── Supabase 연동 (환경변수가 없으면 꺼짐)
     client.ts           클라이언트 생성, service role 키 차단
-    session.ts          익명 로그인, 이메일·구글 연결, 닉네임
+    session.ts          익명/손님 계정으로 바로 시작, 이메일 연결, 닉네임
     api.ts              코스 올리기/목록/평점/기록
   ui/                   ── DOM UI
     online.ts           둘러보기 · 리더보드 · 평점 · 올리기 · 계정

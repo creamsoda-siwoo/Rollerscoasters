@@ -347,40 +347,48 @@ export function showAccountDialog(session: Session, notify: Notify): void {
       'p',
       {},
       account.anonymous
-        ? '지금은 이 브라우저에만 있는 익명 계정입니다. 브라우저 데이터를 지우면 올린 코스를 고칠 수 없게 되니, 계정을 연결해 두세요.'
+        ? '지금은 이 브라우저에만 있는 손님 계정입니다. 브라우저 데이터를 지우면 올린 코스를 고칠 수 없게 되니, 이메일을 연결해 두세요.'
         : `${account.email ?? '연결된 계정'} 으로 로그인되어 있습니다.`,
     ),
     el('label', { class: 'form-row' }, el('span', {}, '닉네임'), nick, saveNick),
   ];
 
-  const email = el('input', { class: 'text-input', type: 'email', placeholder: 'name@example.com', autocomplete: 'email' }) as HTMLInputElement;
-  const needEmail = (): string => {
-    const v = email.value.trim();
-    if (!/^\S+@\S+\.\S+$/.test(v)) throw new Error('이메일 주소를 확인해 주세요');
-    return v;
-  };
-
   if (account.anonymous) {
-    const linkMail = el('button', { class: 'btn' }, '이메일 연결') as HTMLButtonElement;
-    linkMail.addEventListener('click', () =>
-      void run(linkMail, async () => session.linkEmail(needEmail()), '확인 메일을 보냈습니다. 메일의 링크를 누르면 연결됩니다.'),
+    const email = el('input', { class: 'text-input', type: 'email', placeholder: 'name@example.com', autocomplete: 'email' }) as HTMLInputElement;
+    const password = el('input', { class: 'text-input', type: 'password', placeholder: '6자 이상', autocomplete: 'new-password' }) as HTMLInputElement;
+    const read = (): { email: string; password: string } => {
+      const e = email.value.trim();
+      if (!/^\S+@\S+\.\S+$/.test(e)) throw new Error('이메일 주소를 확인해 주세요');
+      if (password.value.length < 6) throw new Error('비밀번호는 6자 이상으로 정해 주세요');
+      return { email: e, password: password.value };
+    };
+    const link = el('button', { class: 'btn primary' }, '이 계정에 연결') as HTMLButtonElement;
+    link.addEventListener('click', () =>
+      void run(link, async () => {
+        const v = read();
+        const done = await session.linkEmail(v.email, v.password);
+        notify(done ? '이메일을 연결했습니다. 이제 다른 기기에서도 로그인할 수 있습니다.' : '확인 메일을 보냈습니다. 메일의 링크를 누르면 연결됩니다.');
+        if (done) close();
+      }, ''),
     );
-    const linkGoogle = el('button', { class: 'btn' }, '구글 계정 연결') as HTMLButtonElement;
-    linkGoogle.addEventListener('click', () => void run(linkGoogle, () => session.linkGoogle(), ''));
-    const loginMail = el('button', { class: 'btn small' }, '이메일로 로그인') as HTMLButtonElement;
-    loginMail.addEventListener('click', () =>
-      void run(loginMail, async () => session.loginWithEmail(needEmail()), '로그인 링크를 메일로 보냈습니다.'),
+    const login = el('button', { class: 'btn' }, '기존 계정으로 로그인') as HTMLButtonElement;
+    login.addEventListener('click', () =>
+      void run(login, async () => {
+        const v = read();
+        await session.loginWithEmail(v.email, v.password);
+        close();
+      }, '로그인했습니다'),
     );
-    const loginGoogle = el('button', { class: 'btn small' }, '구글로 로그인') as HTMLButtonElement;
-    loginGoogle.addEventListener('click', () => void run(loginGoogle, () => session.loginWithGoogle(), ''));
     sections.push(
-      el('h2', { class: 'modal-sub' }, '계정 연결'),
-      el('p', { class: 'small-text' }, '지금 계정(올린 코스·평점·기록)을 그대로 둔 채 로그인 수단만 붙입니다.'),
-      el('label', { class: 'form-row' }, el('span', {}, '이메일'), email, linkMail),
-      el('div', { class: 'row' }, linkGoogle),
-      el('h2', { class: 'modal-sub' }, '기존 계정으로 로그인'),
-      el('p', { class: 'small-text' }, '다른 기기에서 만든 계정이 있을 때. 위 칸에 이메일을 적거나 구글을 고르세요. 지금의 익명 계정에서는 빠져나옵니다.'),
-      el('div', { class: 'row' }, loginMail, loginGoogle),
+      el('h2', { class: 'modal-sub' }, '이메일 계정'),
+      el('label', { class: 'form-row' }, el('span', {}, '이메일'), email),
+      el('label', { class: 'form-row' }, el('span', {}, '비밀번호'), password),
+      el('div', { class: 'row' }, link, login),
+      el(
+        'p',
+        { class: 'small-text', style: 'margin-top:8px' },
+        '“연결”은 지금 계정(올린 코스·평점·기록)을 그대로 둔 채 이메일을 붙입니다. “로그인”은 전에 만든 계정으로 바꿔 들어가며, 지금의 손님 계정에서는 빠져나옵니다.',
+      ),
     );
   } else {
     const out = el('button', { class: 'btn danger' }, '로그아웃') as HTMLButtonElement;
@@ -388,7 +396,7 @@ export function showAccountDialog(session: Session, notify: Notify): void {
       void run(out, async () => {
         await session.signOut();
         close();
-      }, '로그아웃했습니다. 새 익명 계정으로 시작합니다.'),
+      }, '로그아웃했습니다. 새 손님 계정으로 시작합니다.'),
     );
     sections.push(el('div', { class: 'row' }, out));
   }

@@ -9,20 +9,21 @@
 
 1. **프로젝트 만들기** — 대시보드에서 새 프로젝트(한국이면 `ap-northeast-2` 서울).
 2. **마이그레이션 적용** — 둘 중 하나.
-   - SQL Editor 에 `supabase/migrations/20261115000000_online.sql` 전체를 붙여 실행
+   - SQL Editor 에 `supabase/migrations/` 의 SQL 파일을 이름 순서대로 붙여 실행
    - 또는 CLI: `supabase link --project-ref <ref>` → `supabase db push`
-3. **익명 로그인 켜기** — Authentication → Sign In / Providers → *Allow anonymous sign-ins*.
-4. **계정 연결 켜기** — 같은 화면의 *Allow manual linking*. (익명 계정에 구글을 붙이는 데 필요)
-5. **이메일** — Email provider 사용, *Confirm email* 켜 둠.
-   기본 내장 메일은 시간당 발송 수가 매우 적으니 실제 서비스 전에는 Custom SMTP 를 연결하세요.
-6. **구글 로그인** — Google Cloud Console 에서 OAuth 클라이언트(웹)를 만들고
-   - 승인된 리디렉션 URI: `https://<ref>.supabase.co/auth/v1/callback`
-   - Client ID / Secret 을 Supabase 의 Google provider 에 입력
-   (구글을 쓰지 않으면 건너뛰어도 됩니다. 버튼을 누르면 "꺼져 있습니다" 안내가 뜹니다.)
-7. **URL 설정** — Authentication → URL Configuration
+3. **바로 시작(로그인 화면 없음)** — 둘 중 하나면 됩니다.
+   - Authentication → Sign In / Providers → *Allow anonymous sign-ins* 를 켠다(권장), 또는
+   - 꺼 둔 채로 쓴다. 이때는 게임이 "손님 계정"으로 대신 시작합니다: 이 브라우저만 아는 무작위
+     주소(`guest-…@coaster-guest.example.com`, 메일이 가지 않는 예약 도메인)와 비밀번호로 가입합니다.
+     이 방식은 Email provider 의 *Confirm email* 이 **꺼져** 있어야(자동 확인) 동작합니다.
+4. **이메일 계정** — Email provider 사용. 계정 창에서 이메일+비밀번호로 연결·로그인합니다.
+   손님 계정을 이메일 계정으로 바꿀 때는 새 계정을 만들고 코스·평점·기록을 넘겨받습니다
+   (`20261115010000_account_claims.sql`).
+5. 구글 등 소셜 로그인은 쓰지 않습니다.
+6. **URL 설정** — Authentication → URL Configuration
    - Site URL: 배포 주소 (예: `https://coaster.vercel.app`)
    - Redirect URLs: 배포 주소, `http://localhost:5173`, 필요하면 Vercel 미리보기 주소 패턴
-8. **키 확인** — Project Settings → API 에서 Project URL 과 anon(publishable) 키를 복사.
+7. **키 확인** — Project Settings → API 에서 Project URL 과 anon(publishable) 키를 복사.
 
 ## 2. Vercel
 
@@ -54,7 +55,7 @@
 
 - [ ] 마이그레이션 적용됨 — Table Editor 에 `profiles` `tracks` `ratings` `ride_records` 가 보이고 모두 RLS 켜짐
 - [ ] Storage 에 `thumbnails` 버킷(공개, 512KB 제한)이 있음
-- [ ] 익명 로그인 켜짐, manual linking 켜짐 (꺼져 있으면 오른쪽 위에 "접속 실패"가 뜸)
+- [ ] 익명 로그인이 켜져 있거나, 이메일 자동 확인이 켜져 있음(둘 다 아니면 오른쪽 위에 "접속 실패"가 뜸)
 - [ ] Site URL / Redirect URLs 에 배포 주소가 들어 있음
 - [ ] Vercel 환경변수 2개 설정, 값이 anon 키인지 다시 확인(service_role 아님)
 - [ ] `npm run build` 와 `npm test` 통과
@@ -68,13 +69,13 @@
 - [ ] 다른 브라우저(시크릿 창)에서 그 코스가 보이고, 타 본 뒤 별점이 남는다
 - [ ] 그 코스의 탑승 횟수·평점·스릴 점수가 올라가고 "스릴 리더보드"에 나타난다
 - [ ] 다른 계정으로는 남의 코스에 삭제 버튼이 보이지 않는다
-- [ ] 이메일 연결 → 확인 메일의 링크가 배포 주소로 돌아온다
-- [ ] 구글 연결/로그인 후 배포 주소로 돌아온다
+- [ ] 계정 → 이메일 연결 후에도 올린 코스가 "내 코스"에 남아 있다
+- [ ] 다른 브라우저에서 그 이메일로 로그인하면 같은 코스가 보인다
 - [ ] Supabase 대시보드 Advisors(Security) 에 경고가 없다
 
 운영하면서
 
-- [ ] 익명 가입 남용 대비: Authentication → Attack Protection 에서 CAPTCHA(Turnstile 등) 검토
+- [ ] 손님·익명 가입 남용 대비: Authentication → Attack Protection 에서 CAPTCHA(Turnstile 등) 검토
 - [ ] 무료 플랜은 일정 기간 사용이 없으면 프로젝트가 일시 중지됨
 - [ ] 오래된 익명 계정 정리(연결하지 않은 계정은 브라우저 데이터를 지우면 다시 들어갈 수 없음)
 
@@ -86,6 +87,7 @@
 | `tracks` | 코스 JSON(`data`), 썸네일, 집계 값 | 공개 코스는 누구나, 비공개는 작성자 | 작성자만 수정·삭제 |
 | `ratings` | (track_id, user_id) 당 1~5점 하나 | 누구나 | 본인 것만, 자기 코스에는 불가 |
 | `ride_records` | 최고 속도, 최대 G, 스릴 점수 | 누구나 | 본인 이름으로 추가만 |
+| `account_claims` | 계정 넘겨받기용 일회용 코드(해시) | 불가 | 함수로만 |
 
 - `tracks.play_count` `avg_rating` `rating_count` `best_thrill` 은 클라이언트에 쓰기 권한이 없고 트리거가 갱신합니다.
 - 평점은 `rate_track(track_id, score)` RPC 로 남깁니다(있으면 고치고 없으면 만듦).
