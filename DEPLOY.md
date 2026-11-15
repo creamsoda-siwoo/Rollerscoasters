@@ -54,7 +54,7 @@
 
 - [ ] 마이그레이션 적용됨 — Table Editor 에 `profiles` `tracks` `ratings` `ride_records` 가 보이고 모두 RLS 켜짐
 - [ ] Storage 에 `thumbnails` 버킷(공개, 512KB 제한)이 있음
-- [ ] 익명 로그인 켜짐, manual linking 켜짐
+- [ ] 익명 로그인 켜짐, manual linking 켜짐 (꺼져 있으면 오른쪽 위에 "접속 실패"가 뜸)
 - [ ] Site URL / Redirect URLs 에 배포 주소가 들어 있음
 - [ ] Vercel 환경변수 2개 설정, 값이 anon 키인지 다시 확인(service_role 아님)
 - [ ] `npm run build` 와 `npm test` 통과

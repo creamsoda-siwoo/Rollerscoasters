@@ -23,7 +23,7 @@ export type TrackSort = 'popular' | 'recent' | 'rating' | 'thrill' | 'mine';
 export const PAGE_SIZE = 24;
 
 const LIST_COLUMNS =
-  'id, user_id, title, thumbnail_url, is_public, play_count, avg_rating, rating_count, best_thrill, created_at, profiles(nickname)';
+  'id, user_id, title, thumbnail_url, is_public, play_count, avg_rating, rating_count, best_thrill, created_at, profiles!tracks_user_id_fkey(nickname)';
 
 function db() {
   if (!supabase) throw new Error('온라인 기능이 설정되지 않았습니다');

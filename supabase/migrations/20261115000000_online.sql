@@ -38,6 +38,9 @@ begin
   values (new.id, '라이더' || upper(substr(replace(new.id::text, '-', ''), 1, 5)))
   on conflict (id) do nothing;
   return new;
+exception when others then
+  -- 프로필 생성이 실패해도 가입 자체는 막지 않는다(클라이언트가 처음 접속할 때 다시 만든다)
+  return new;
 end $$;
 
 create trigger on_auth_user_created
