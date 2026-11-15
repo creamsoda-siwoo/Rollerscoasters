@@ -115,6 +115,7 @@ export class Editor {
   private readonly v = new THREE.Vector3();
   private readonly v2 = new THREE.Vector3();
   private readonly frame = createFrame();
+  private stallShown = false;
   private readonly saved = { position: new THREE.Vector3(), target: new THREE.Vector3(), valid: false };
 
   constructor(
@@ -219,6 +220,18 @@ export class Editor {
     this.root.visible = active;
     this.world.canvas.style.cursor = '';
     if (active) this.controls.update();
+  }
+
+  /** 제어점 손잡이·표식을 잠깐 숨기거나 되돌린다(썸네일 촬영용) */
+  setOverlayVisible(visible: boolean): void {
+    if (!visible) {
+      this.stallShown = this.stallMarker.group.visible;
+      this.stallMarker.group.visible = false;
+      this.root.visible = false;
+    } else {
+      this.root.visible = this.active;
+      this.stallMarker.group.visible = this.stallShown;
+    }
   }
 
   setTool(tool: Tool): void {

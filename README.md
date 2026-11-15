@@ -19,6 +19,14 @@ npm test           # 트랙·물리 단위 테스트
 
 `dist/` 는 정적 파일뿐이라 아무 정적 호스팅에나 올리면 됩니다(상대 경로 빌드).
 
+## 온라인 기능 (선택)
+
+Supabase 를 연결하면 익명 로그인으로 바로 시작해 코스를 올리고, 남의 코스를 타 보고 평점을 남길 수 있습니다.
+`.env.example` 을 `.env.local` 로 복사해 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 를 채우면 켜집니다.
+값이 없으면 온라인 버튼만 비활성 안내를 띄우고 나머지는 그대로 동작합니다.
+
+DB 스키마는 `supabase/migrations/`, Vercel 배포와 체크리스트는 [DEPLOY.md](DEPLOY.md) 를 보세요.
+
 ## 조작
 
 ### 설계 모드
@@ -70,7 +78,12 @@ src/
   ride/                 ── 탑승 모드
     ride.ts             실시간 시뮬레이션, 1인칭/3인칭 카메라, FOV, 소리 연동
     train.ts            열차 모델
+  online/               ── Supabase 연동 (환경변수가 없으면 꺼짐)
+    client.ts           클라이언트 생성, service role 키 차단
+    session.ts          익명 로그인, 이메일·구글 연결, 닉네임
+    api.ts              코스 올리기/목록/평점/기록
   ui/                   ── DOM UI
+    online.ts           둘러보기 · 리더보드 · 평점 · 올리기 · 계정
     designPanel.ts      상단 바 · 도구 막대 · 속성 패널
     hud.ts              속도 · G · 붉은 가장자리 경고
     dialogs.ts          결과 화면, 불러오기, JSON 내보내기/가져오기
@@ -81,6 +94,11 @@ src/
     sky.ts              하늘 · 구름             markers.ts        정지 위치 표식
     audio.ts            바람 · 굉음 · 체인 소리(Web Audio, 외부 파일 없음)
 tests/                  vitest 단위 테스트(트랙, 프리셋, JSON, 물리)
+supabase/
+  migrations/           테이블 · RLS · 트리거 · Storage 정책
+  tests/                로컬 Postgres 로 RLS 를 검증하는 스크립트
+vercel.json             Vercel 빌드 설정
+DEPLOY.md               배포 가이드와 체크리스트
 ```
 
 의존 방향은 `ui → editor/ride → physics → track` 이고, `track`·`physics` 는 화면 없이 Node 에서 그대로 돌아갑니다.

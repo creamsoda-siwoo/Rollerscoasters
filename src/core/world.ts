@@ -89,6 +89,25 @@ export class World {
     this.camera.updateProjectionMatrix();
   }
 
+  /**
+   * 지금 화면을 width×height JPEG 로 찍는다(가운데를 기준으로 잘라 맞춤).
+   * WebGL 캔버스는 그린 직후에만 내용이 남아 있으므로, 렌더와 복사를 같은 틱에 한다.
+   */
+  capture(width: number, height: number, quality = 0.82): Promise<Blob | null> {
+    this.renderer.render(this.scene, this.camera);
+    const src = this.renderer.domElement;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || src.width === 0 || src.height === 0) return Promise.resolve(null);
+    const scale = Math.max(width / src.width, height / src.height);
+    const sw = width / scale;
+    const sh = height / scale;
+    ctx.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, width, height);
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+  }
+
   render(dt: number): void {
     this.sky.update(dt, this.camera.position);
     this.renderer.render(this.scene, this.camera);

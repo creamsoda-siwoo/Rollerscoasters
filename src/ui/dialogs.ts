@@ -15,17 +15,19 @@ export function closeModal(): void {
   closeCurrent?.();
 }
 
-interface ModalOptions {
+export interface ModalOptions {
   wide?: boolean;
+  /** 화면을 거의 채우는 큰 창 */
+  full?: boolean;
   /** 배경을 옅게(뒤 장면이 보이도록) */
   light?: boolean;
   /** 배경 클릭·Esc 로 닫을 때 호출. 없으면 그런 방식으로는 닫히지 않는다 */
   onDismiss?: () => void;
 }
 
-function openModal(content: HTMLElement[], options: ModalOptions = {}): () => void {
+export function openModal(content: HTMLElement[], options: ModalOptions = {}): () => void {
   closeModal();
-  const card = el('div', { class: `modal panel ${options.wide ? 'wide' : ''}`, role: 'dialog' }, ...content);
+  const card = el('div', { class: `modal panel ${options.full ? 'full' : options.wide ? 'wide' : ''}`, role: 'dialog' }, ...content);
   const backdrop = el('div', { class: `backdrop ${options.light ? 'light' : ''}` }, card);
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && options.onDismiss) {
@@ -54,9 +56,17 @@ function stat(label: string, value: string, unit = '', key = false): HTMLElement
 
 // ── 탑승 결과 ────────────────────────────────────────────────────────────────
 
+export interface ResultOptions {
+  /** 통계 아래에 끼워 넣을 내용(남의 코스 평점 등) */
+  extra?: HTMLElement | null;
+  /** 주 버튼 문구. 주면 실패했을 때도 design 동작으로 돌아간다(남의 코스를 타는 중). */
+  backLabel?: string;
+}
+
 export function showResult(
   record: RideRecord,
   actions: { retry: () => void; design: () => void; showStall: () => void },
+  options: ResultOptions = {},
 ): void {
   const ok = record.completed;
   const grade = thrillGrade(record.thrill);
@@ -99,7 +109,7 @@ export function showResult(
         'div',
         { class: 'note' },
         `출발 후 ${(record.stallAt ?? 0).toFixed(0)} m 지점에서 속도가 부족해 멈췄습니다. ` +
-          '그 앞의 오르막을 낮추거나, 더 높은 곳에서 내려오도록 고쳐 보세요.',
+          (options.backLabel ? '' : '그 앞의 오르막을 낮추거나, 더 높은 곳에서 내려오도록 고쳐 보세요.'),
       ),
     );
   } else if (record.overGTime > 0.05) {
@@ -117,12 +127,13 @@ export function showResult(
     'div',
     { class: 'modal-actions' },
     el('button', { class: 'btn', onclick: actions.retry }, '다시 탑승'),
-    ok
-      ? el('button', { class: 'btn primary', onclick: actions.design }, '설계로 돌아가기')
+    ok || options.backLabel
+      ? el('button', { class: 'btn primary', onclick: actions.design }, options.backLabel ?? '설계로 돌아가기')
       : el('button', { class: 'btn primary', onclick: actions.showStall }, '멈춘 위치 보기'),
   );
 
-  openModal([head, grid, ...notes, buttons], { light: true });
+  const extra = options.extra ? [options.extra] : [];
+  openModal([head, grid, ...notes, ...extra, buttons], { light: true });
 }
 
 // ── 확인 ────────────────────────────────────────────────────────────────────

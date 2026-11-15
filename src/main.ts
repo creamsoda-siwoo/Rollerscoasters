@@ -6,8 +6,12 @@ import { Editor } from './editor/editor';
 import type { EditorHost } from './editor/editor';
 import { simulateRide } from './physics/simulation';
 import type { SimulationResult } from './physics/simulation';
+import { fetchCourse, submitRecord, uploadTrack } from './online/api';
+import type { TrackRow, TrackSort } from './online/api';
+import { OFFLINE_MESSAGE, onlineEnabled } from './online/client';
+import { Session, describeError } from './online/session';
 import { Ride } from './ride/ride';
-import { createDefaultCourse, createStarterCourse, deserializeCourse, serializeCourse } from './track/course';
+import { createDefaultCourse, createStarterCourse, deserializeCourse, serializeCourse, uid } from './track/course';
 import { buildTrack } from './track/spline';
 import type { Track } from './track/spline';
 import * as storage from './track/storage';
@@ -17,6 +21,7 @@ import { DesignPanel } from './ui/designPanel';
 import { closeModal, confirmDialog, isModalOpen, showJsonDialog, showLoadDialog, showResult } from './ui/dialogs';
 import { $, isTyping } from './ui/dom';
 import { Hud } from './ui/hud';
+import { ratingWidget, showAccountDialog, showBrowse, showUploadDialog } from './ui/online';
 import { toast } from './ui/toast';
 
 type Mode = 'design' | 'ride';
@@ -45,6 +50,10 @@ class App implements EditorHost {
   private lastPredict = 0;
   private predictPending = false;
   private liveDirty = false;
+  private readonly session = new Session();
+  /** 남의 코스를 타는 중이면 그 코스와, 잠시 치워 둔 내 설계 */
+  private guest: { track: TrackRow; own: CourseData } | null = null;
+  private browseTab: TrackSort = 'popular';
   private lastFrame = performance.now();
   private readonly tmp = new THREE.Vector3();
 
@@ -74,9 +83,14 @@ class App implements EditorHost {
     $('btn-exit').addEventListener('click', () => this.exitRide());
     window.addEventListener('keydown', (e) => this.onKey(e));
     // 탭을 떠날 때 마지막 상태를 남긴다
-    window.addEventListener('pagehide', () => storage.saveAutosave(this.course));
+    window.addEventListener('pagehide', () => storage.saveAutosave(this.guest?.own ?? this.course));
     // 탭이 가려지면 화면이 멈추므로 소리도 멈춘다
     document.addEventListener('visibilitychange', () => this.audio.setSuspended(document.hidden));
+
+    $('btn-browse').addEventListener('click', () => this.openBrowse());
+    $('btn-publish').addEventListener('click', () => void this.publish());
+    $('btn-account').addEventListener('click', () => this.openAccount());
+    this.initOnline();
 
     this.applyCourse();
     requestAnimationFrame(this.frame);
@@ -227,6 +241,128 @@ class App implements EditorHost {
     });
   }
 
+  // ── 온라인(Supabase) ──────────────────────────────────────────────────────
+
+  private initOnline(): void {
+    const button = $('btn-account');
+    if (!onlineEnabled) {
+      button.textContent = '오프라인';
+      return;
+    }
+    button.textContent = '접속 중…';
+    this.session.onChange((account) => {
+      button.textContent = account ? account.nickname : '계정';
+      button.classList.toggle('guest', account?.anonymous === true);
+    });
+    // 익명 로그인으로 바로 시작한다. 실패해도 게임은 오프라인으로 계속 쓸 수 있다.
+    this.session.ensure().catch((err) => {
+      button.textContent = '접속 실패';
+      console.warn('[coaster] 로그인 실패:', err);
+    });
+  }
+
+  /** 온라인 기능을 쓸 수 있는지 확인하고, 안 되면 이유를 알린다 */
+  private async requireAccount() {
+    if (!onlineEnabled) {
+      toast(OFFLINE_MESSAGE, 'error');
+      return null;
+    }
+    try {
+      const account = await this.session.ensure();
+      if (!account) toast('로그인하지 못했습니다', 'error');
+      return account;
+    } catch (err) {
+      toast(`서버에 접속하지 못했습니다: ${describeError(err)}`, 'error');
+      return null;
+    }
+  }
+
+  private openAccount(): void {
+    void this.requireAccount().then((account) => {
+      if (account) showAccountDialog(this.session, toast);
+    });
+  }
+
+  private openBrowse(): void {
+    if (!onlineEnabled) {
+      toast(OFFLINE_MESSAGE, 'error');
+      return;
+    }
+    showBrowse({
+      session: this.session,
+      initial: this.browseTab,
+      onTab: (tab) => (this.browseTab = tab),
+      onPlay: (track) => void this.playRemote(track),
+      onRemix: (track) => void this.remix(track),
+      notify: toast,
+    });
+  }
+
+  /** 현재 코스를 화면 캡처와 함께 서버에 올린다 */
+  private async publish(): Promise<void> {
+    const account = await this.requireAccount();
+    if (!account) return;
+    if (!this.prediction?.record.completed) {
+      toast('완주할 수 있는 코스만 올릴 수 있습니다. 먼저 설계를 고쳐 주세요.', 'error');
+      return;
+    }
+    // 손잡이를 숨기고 지금 화면을 찍는다
+    this.editor.setOverlayVisible(false);
+    const thumbnail = await this.world.capture(480, 270);
+    this.editor.setOverlayVisible(true);
+    const course = this.course;
+    showUploadDialog({
+      title: course.name,
+      update: !!course.remoteId,
+      thumbnail,
+      onSubmit: async (title, isPublic) => {
+        try {
+          const id = await uploadTrack({ course, title, isPublic, thumbnail, userId: account.id });
+          course.remoteId = id;
+          course.name = title.trim().slice(0, 60) || course.name;
+          storage.saveAutosave(course);
+          this.refreshInfo();
+          toast(isPublic ? '코스를 올렸습니다. 둘러보기에서 볼 수 있습니다.' : '비공개로 올렸습니다.');
+        } catch (err) {
+          toast(`올리지 못했습니다: ${describeError(err)}`, 'error');
+          throw err;
+        }
+      },
+    });
+  }
+
+  /** 서버의 코스를 받아 바로 탄다. 내 설계는 그대로 두었다가 끝나면 되돌린다. */
+  private async playRemote(track: TrackRow): Promise<void> {
+    if (this.mode !== 'design') return;
+    let course: CourseData;
+    try {
+      course = await fetchCourse(track.id);
+    } catch (err) {
+      toast(`코스를 받지 못했습니다: ${describeError(err)}`, 'error');
+      return;
+    }
+    closeModal();
+    this.guest = { track, own: this.course };
+    this.course = course;
+    this.rebuild();
+    this.world.terrain.clearTreesAlong(this.track);
+    this.startRide();
+  }
+
+  /** 서버의 코스를 내 설계로 복사해 편집한다 */
+  private async remix(track: TrackRow): Promise<void> {
+    try {
+      const course = await fetchCourse(track.id);
+      course.id = uid();
+      course.name = `${course.name} (복사)`.slice(0, 60);
+      closeModal();
+      this.setCourse(course);
+      toast(`“${track.title}” 을 내 설계로 복사했습니다`);
+    } catch (err) {
+      toast(`코스를 받지 못했습니다: ${describeError(err)}`, 'error');
+    }
+  }
+
   // ── 모드 전환 ──────────────────────────────────────────────────────────────
 
   private startRide(): void {
@@ -254,12 +390,45 @@ class App implements EditorHost {
     $('ride-ui').hidden = true;
     $('design-ui').hidden = false;
     document.body.classList.remove('riding');
+    const guest = this.guest;
+    if (guest) {
+      // 남의 코스를 탔으면 내 설계를 되돌려 놓는다
+      this.guest = null;
+      this.course = guest.own;
+      this.rebuild();
+      this.predict();
+      this.world.terrain.clearTreesAlong(this.track);
+    }
     this.editor.setActive(true);
+    this.editor.refresh();
     this.refreshInfo();
     this.panel.refresh();
+    if (guest) this.openBrowse();
   }
 
   private onRideEnd(record: RideRecord): void {
+    const guest = this.guest;
+    if (guest) {
+      const account = this.session.account;
+      if (record.completed && account) {
+        submitRecord(guest.track.id, account.id, record)
+          .then(() => toast('탑승 기록을 남겼습니다'))
+          .catch((err) => toast(`기록을 남기지 못했습니다: ${describeError(err)}`, 'error'));
+      }
+      showResult(
+        record,
+        {
+          retry: () => {
+            closeModal();
+            this.ride.start(this.track);
+          },
+          design: () => this.exitRide(),
+          showStall: () => this.exitRide(),
+        },
+        { extra: ratingWidget(guest.track, account, toast), backLabel: '둘러보기로' },
+      );
+      return;
+    }
     if (record.completed) {
       this.course.record = record;
       storage.saveAutosave(this.course);

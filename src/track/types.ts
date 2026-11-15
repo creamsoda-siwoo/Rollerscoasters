@@ -72,4 +72,6 @@ export interface CourseData {
   points: ControlPoint[];
   /** 현재 설계에 대한 탑승 기록. 설계가 바뀌면 null 로 초기화된다. */
   record: RideRecord | null;
+  /** 서버에 올린 적이 있으면 그 코스(tracks.id). 다시 올릴 때 덮어쓰기 위해 기억한다. */
+  remoteId?: string;
 }

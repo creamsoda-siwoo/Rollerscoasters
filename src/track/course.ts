@@ -42,6 +42,7 @@ export function serializeCourse(course: CourseData, pretty = false): string {
     })),
     record: course.record,
   };
+  if (course.remoteId) out.remoteId = course.remoteId;
   return JSON.stringify(out, null, pretty ? 2 : undefined);
 }
 
@@ -127,6 +128,7 @@ export function deserializeCourse(input: string | unknown): CourseData {
     updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : now,
     points,
     record: parseRecord(o.record),
+    ...(typeof o.remoteId === 'string' && /^[0-9a-f-]{36}$/i.test(o.remoteId) ? { remoteId: o.remoteId } : {}),
   };
 }
 
